@@ -6,6 +6,8 @@
 
 #include "mujs.h"
 
+#include "modclib.h"
+
 static char *xoptarg; /* Global argument pointer. */
 static int xoptind = 0; /* Global argv index. */
 static int xgetopt(int argc, char *argv[], char *optstring)
@@ -330,6 +332,8 @@ main(int argc, char **argv)
 
 	js_dostring(J, require_js);
 	js_dostring(J, stacktrace_js);
+
+    module_clib(J);
 
 	if (xoptind == argc) {
 		interactive = 1;
