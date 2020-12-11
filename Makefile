@@ -81,7 +81,7 @@ $(OUT)/libmujs.so: one.c $(HDRS)
 	@ mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -fPIC -shared -o $@ $< -lm
 
-$(OUT)/mujs: $(OUT)/libmujs.o $(OUT)/main.o $(OUT)/modclib.o
+$(OUT)/mujs: $(OUT)/libmujs.o $(OUT)/main.o $(OUT)/modclin.o
 	@ mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBREADLINE) -lm
 

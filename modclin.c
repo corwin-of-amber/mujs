@@ -1,8 +1,9 @@
 
 #include <stdio.h>
 #include <dlfcn.h>
+#include <stdint.h>
 
-#include "modclib.h"
+#include "modclin.h"
 #include "jsi.h"
 #include "jsvalue.h"
 
@@ -17,6 +18,16 @@ static void js_pushopaque(js_State *J, void *p) {
     js_pushvalue(J, v);
 }
 
+int js_isopaque(js_State *J, int idx) {
+    return js_tovalue(J, idx)->type == JS_TOPAQUE;
+}
+
+static void *js_toopaque(js_State *J, int idx) {
+	js_Value *v = js_tovalue(J, idx);
+	if (v->type == JS_TOPAQUE) return (void*)(v->u.object);
+    js_typeerror(J, "not a C value");
+}
+
 static void jsB_dlsym(js_State *J) {
     const char *nm = js_tostring(J, 1);
     void *s = dlsym(RTLD_DEFAULT, nm);
@@ -28,17 +39,51 @@ static void jsB_cstring(js_State *J) {
     js_pushopaque(J, (void*)s);
 }
 
+static void jsB_cstring_tojsstring(js_State *J) {
+    const char *s = js_toopaque(J, 1);
+    js_pushstring(J, s);
+}
+
 static void jsB_cint(js_State *J) {
-    size_t i = js_tonumber(J, 1);  /* cast to word size */
+    size_t i = js_tointeger(J, 1);  /* cast to word size */
     js_pushopaque(J, (void*)i);
 }
+
+static void jsB_cint_tonumber(js_State *J) {
+    size_t i = (size_t)js_toopaque(J, 1);
+    js_pushnumber(J, i);
+}
+
+static void jsB_csetw(js_State *J) {
+    void **base = js_toopaque(J, 1);
+    size_t offset = js_tointeger(J, 2);
+    void *val = js_toopaque(J, 3);
+    base[offset] = val;
+    js_pushundefined(J);
+}
+
+static void jsB_cset16(js_State *J) {
+    uint16_t *base = js_toopaque(J, 1);
+    size_t offset = js_tointeger(J, 2);
+    void *val = js_toopaque(J, 3);
+    base[offset] = (uint16_t)val;
+    js_pushundefined(J);
+}
+
+static void jsB_cset32(js_State *J) {
+    uint32_t *base = js_toopaque(J, 1);
+    size_t offset = js_tointeger(J, 2);
+    void *val = js_toopaque(J, 3);
+    base[offset] = (uint32_t)val;
+    js_pushundefined(J);
+}
+
 
 typedef void *(*foreign0)();
 typedef void *(*foreign1)(void *, ...);
 
 static void jsB_ccall(js_State *J) {
-    js_Value *v = js_tovalue(J, 1);
-    void *fp = v->u.object, *retval;
+    void *fp = js_toopaque(J, 1), *retval;
 
     int n = js_gettop(J);
     switch (n) {  /* YEP */
@@ -119,9 +164,14 @@ int
 module_clib(js_State *J) {
 
     js_globalfunc(J, jsB_dlsym, "dlsym");
-    js_globalfunc(J, jsB_cstring, "cstring");
     js_globalfunc(J, jsB_cint, "cint");
+    js_globalfunc(J, jsB_cint_tonumber, "cint_");
+    js_globalfunc(J, jsB_cstring, "cstring");
+    js_globalfunc(J, jsB_cstring_tojsstring, "cstring_");
     js_globalfunc(J, jsB_ccall, "ccall");
+    js_globalfunc(J, jsB_csetw, "csetw");
+    js_globalfunc(J, jsB_cset16, "cset16");
+    js_globalfunc(J, jsB_cset32, "cset32");
 
     return 0;
 }
